@@ -4,7 +4,7 @@
   
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <LangVersion>10</LangVersion>
+    <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     
@@ -16,12 +16,14 @@
   
   <ItemGroup>
     <PackageReference Include="Mono.Cecil" Version="0.11.6" />
+    <PackageReference Include="MonoMod.Utils" Version="25.0.14" />
     <PackageReference Include="UnityEngine.Modules" Version="6000.0.50" IncludeAssets="compile" />
     <PackageReference Include="Silksong.GameLibs" Version="*-*" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
     <OutputFiles Include="$(TargetDir)/Mono.Cecil.dll" />
+    <OutputFiles Include="$(TargetDir)/MonoMod.Utils.dll" />
     <OutputFiles Include="$(TargetPath)" LocalDir="/" PackDir="/" />
     <OutputFiles Include="$(TargetDir)/$(TargetName).pdb" LocalDir="/" PackDir="/" />
 

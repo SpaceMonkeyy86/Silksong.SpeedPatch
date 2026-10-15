@@ -16,7 +16,7 @@ internal class OnGUIPatch : CopyPatch
         : base(targetModule, sourceModule, "GameManager", "OnGUI")
     {
         _warningText = $"SpeedPatch v{PatchesManager.Version!}\n";
-        
+
         foreach (FieldInfo field in settings.GetType().GetFields(BindingFlags.Instance | BindingFlags.Public))
         {
             bool activated = (bool)field.GetValue(settings);
@@ -29,6 +29,9 @@ internal class OnGUIPatch : CopyPatch
                         break;
                     case "CourierRNGFix":
                         _warningText += "CourierRNGFix";
+                        break;
+                    case "CycleNormalizerFix":
+                        _warningText += "CycleNormalizerFix";
                         break;
                 }
                 _warningText += '\n';
