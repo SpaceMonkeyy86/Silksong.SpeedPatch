@@ -30,6 +30,7 @@ internal class CycleNormalizerPatch : Patch
         FieldDefinition stateField = stateMachineType.Fields.First(field => field.Name.Contains("__state"));
         FieldDefinition currentField = stateMachineType.Fields.First(field => field.Name.Contains("__current"));
 
+        // Add a new field to SceneLoad of type TimeManager.TimeControlInstance, named _timeControl
         TypeDefinition timeControlInstanceType = _targetModule.GetType(nameof(TimeManager))
             .NestedTypes.First(type => type.Name.Contains(nameof(TimeManager.TimeControlInstance)));
         FieldDefinition timeControlField = new("_timeControl", FieldAttributes.Private, timeControlInstanceType);
@@ -165,9 +166,8 @@ internal class CycleNormalizerPatch : Patch
             i => i.MatchCall(sceneLoadType.Properties.First(property => property.Name == nameof(SceneLoad.IsFinished)).SetMethod)
         );
 
-        // This instruction has multiple branches pointing to it, so we keep it in place
-        // Replace it with a nop, then copy the instruction to a new one below it
-        // (ILCursor seems to not like copying Instructions directly)
+        // Replace the try/catch branch target with a nop, then add our code underneath.
+        // The real instruction is copied to the end.
         OpCode targetOpCode = il.Next.OpCode;
         object targetOperand = il.Next.Operand;
         il.Next.OpCode = OpCodes.Nop;
@@ -214,6 +214,7 @@ internal class CycleNormalizerPatch : Patch
 
         switchInstruction.Operand = switchTargets.ToArray();
 
+        // Cecil can't emit ILLabel operands correctly, it expects Instruction
         foreach (Instruction inst in il.Instrs)
         {
             if (inst.Operand is ILLabel label)
