@@ -32,7 +32,7 @@ internal class CycleNormalizerPatch : Patch
 
         TypeDefinition timeControlInstanceType = _targetModule.GetType(nameof(TimeManager))
             .NestedTypes.First(type => type.Name.Contains(nameof(TimeManager.TimeControlInstance)));
-        FieldDefinition timeControlField = new("_timeControl", FieldAttributes.Public, timeControlInstanceType);
+        FieldDefinition timeControlField = new("_timeControl", FieldAttributes.Private, timeControlInstanceType);
         sceneLoadType.Fields.Add(timeControlField);
 
         ILCursor il = new(new ILContext(targetMethod));
@@ -40,10 +40,10 @@ internal class CycleNormalizerPatch : Patch
         il.Goto(0);
         il.GotoNext(i => i.Match(OpCodes.Switch));
         Instruction switchInstruction = il.Next!;
-        List<Instruction> switchTargets = (switchInstruction.Operand as Instruction[])!.ToList();
+        List<ILLabel> switchTargets = (switchInstruction.Operand as Instruction[])!.Select(il.MarkLabel).ToList();
 
         il.GotoNext(i => i.Match(OpCodes.Leave));
-        ILLabel returnLabel = il.MarkLabel();
+        ILLabel returnLabel = il.MarkLabel((il.Next!.Operand as Instruction)!);
 
         /*
          * RecordBeginTime(Phases.Activation);
@@ -67,8 +67,10 @@ internal class CycleNormalizerPatch : Patch
         // SceneManager.loadedSceneCount - SceneAdditiveLoadConditional._additiveSceneLoads.Count <= 1
         il.EmitCall(_targetModule.ImportReference(typeof(SceneManager)
             .GetProperty(nameof(SceneManager.loadedSceneCount))!.GetMethod));
-        il.EmitLdsfld(_targetModule.GetType(nameof(SceneAdditiveLoadConditional))
-            .Fields.First(field => field.Name == nameof(SceneAdditiveLoadConditional._additiveSceneLoads)));
+        FieldDefinition additiveSceneLoadsField = _targetModule.GetType(nameof(SceneAdditiveLoadConditional))
+            .Fields.First(field => field.Name == nameof(SceneAdditiveLoadConditional._additiveSceneLoads));
+        additiveSceneLoadsField.IsPublic = true;
+        il.EmitLdsfld(additiveSceneLoadsField);
         il.EmitCall(_targetModule.ImportReference(typeof(List<SceneAdditiveLoadConditional>)
             .GetProperty(nameof(List<>.Count))!.GetMethod));
         il.EmitSub();
@@ -91,14 +93,15 @@ internal class CycleNormalizerPatch : Patch
         il.EmitLdloc(freezeTimeLocal);
         il.EmitBrfalse(afterSetTimeControlLabel);
         il.MarkLabel(afterSetTimeControlLabel);
+        il.MoveBeforeLabels();
 
         // _timeControl = new TimeManager.TimeControlInstance(0f, TimeManager.TimeControlInstance.Type.Multiplicative);
+        il.EmitLdloc(2);
         il.EmitLdcR4(0f);
         il.EmitLdcI4(0);
         il.EmitNewobj(_targetModule.GetType(nameof(TimeManager))
             .NestedTypes.First(type => type.Name.Contains(nameof(TimeManager.TimeControlInstance)))
             .GetConstructors().First());
-        il.EmitLdloc(2);
         il.EmitStfld(timeControlField);
 
         /*
@@ -130,8 +133,9 @@ internal class CycleNormalizerPatch : Patch
 
         // yield return null;
         il.MarkLabel(afterSecondYieldLabel);
+        il.MoveBeforeLabels();
         int afterSecondYieldState = switchTargets.Count;
-        switchTargets.Add(afterSecondYieldLabel.Target!);
+        switchTargets.Add(afterSecondYieldLabel);
         il.EmitLdarg(0);
         il.EmitLdnull();
         il.EmitStfld(currentField);
@@ -155,11 +159,24 @@ internal class CycleNormalizerPatch : Patch
          */
 
         il.Goto(0);
-        il.GotoNext(MoveType.Before,
+        il.GotoNext(MoveType.AfterLabel,
             i => i.MatchLdloc(2),
             i => i.MatchLdcI4(1),
             i => i.MatchCall(sceneLoadType.Properties.First(property => property.Name == nameof(SceneLoad.IsFinished)).SetMethod)
         );
+
+        // This instruction has multiple branches pointing to it, so we keep it in place
+        // Replace it with a nop, then copy the instruction to a new one below it
+        // (ILCursor seems to not like copying Instructions directly)
+        OpCode targetOpCode = il.Next.OpCode;
+        object targetOperand = il.Next.Operand;
+        il.Next.OpCode = OpCodes.Nop;
+        il.Next.Operand = null;
+        il.GotoNext();
+        il.EmitNop();
+        il.Prev.OpCode = targetOpCode;
+        il.Prev.Operand = targetOperand;
+        il.GotoPrev();
 
         // if (_timeControl != null) { ... }
         ILLabel afterReleaseTimeControlLabel = il.DefineLabel();
@@ -179,8 +196,10 @@ internal class CycleNormalizerPatch : Patch
         il.GotoNext();
 
         // yield return new WaitForSecondsRealtime(0.06f);
+        ILLabel afterYieldDelayLabel = il.MarkLabel();
+        il.MoveBeforeLabels();
         int afterYieldDelayState = switchTargets.Count;
-        switchTargets.Add(il.Next!);
+        switchTargets.Add(afterYieldDelayLabel);
         il.EmitLdarg(0);
         il.EmitLdcR4(0.06f);
         il.EmitNewobj(_targetModule.ImportReference(typeof(WaitForSecondsRealtime)
@@ -200,6 +219,11 @@ internal class CycleNormalizerPatch : Patch
             if (inst.Operand is ILLabel label)
             {
                 inst.Operand = label.Target!;
+            }
+
+            if (inst.Operand is ILLabel[] labels)
+            {
+                inst.Operand = labels.Select(x => x.Target).ToArray();
             }
         }
     }
