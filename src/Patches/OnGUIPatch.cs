@@ -30,8 +30,8 @@ internal class OnGUIPatch : CopyPatch
                     case "CourierRNGFix":
                         _warningText += "CourierRNGFix";
                         break;
-                    case "CycleNormalizerFix":
-                        _warningText += "CycleNormalizerFix";
+                    case "CycleNormalizer":
+                        _warningText += "CycleNormalizer";
                         break;
                 }
                 _warningText += '\n';

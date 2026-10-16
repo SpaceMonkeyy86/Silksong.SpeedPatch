@@ -17,7 +17,7 @@ internal class PatchesManager
     {
         public bool DowndashTransitionFix = false;
         public bool CourierRNGFix = false;
-        public bool CycleNormalizerFix = false;
+        public bool CycleNormalizer = false;
     }
 
     private Settings _settings = new();
@@ -70,7 +70,7 @@ internal class PatchesManager
         {
             _patches.Add(new CourierFixPatch(_targetModule, _sourceModule));
         }
-        if (_settings.CycleNormalizerFix)
+        if (_settings.CycleNormalizer)
         {
             _patches.Add(new CycleNormalizerPatch(_targetModule));
         }
