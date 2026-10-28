@@ -21,7 +21,7 @@ public static class Entrypoint
             // that is different from Windows and Linux
             if (String.IsNullOrEmpty(dataDir))
             {
-                string contentsDir = Path.GetDirectoryName(baseDir);
+                string contentsDir = Path.GetDirectoryName(baseDir)!;
                 dataDir = Path.Combine(contentsDir, "Resources", "Data");
             }
 
@@ -29,7 +29,10 @@ public static class Entrypoint
             string asmPath = Path.Combine(managedDir, "Assembly-CSharp.dll");
 
             string modPath = typeof(Entrypoint).Assembly.Location;
-            string modDir = Path.GetDirectoryName(modPath);
+            string modDir = Path.GetDirectoryName(modPath)!;
+            string outputPath = Path.Combine(modDir, "Assembly-CSharp.dll");
+
+            File.Delete(outputPath);
 
             var resolver = new DefaultAssemblyResolver();
             resolver.AddSearchDirectory(managedDir);
@@ -51,7 +54,8 @@ public static class Entrypoint
             PatchesManager manager = new(silksongModule, modModule);
             manager.ApplyPatches();
 
-            silksongAsm.Write(Path.Combine(modDir, "Assembly-CSharp.dll"));
+            silksongAsm.Write(Path.Combine(outputPath));
+            Console.WriteLine("Finished writing assembly");
         }
         catch (Exception e)
         {

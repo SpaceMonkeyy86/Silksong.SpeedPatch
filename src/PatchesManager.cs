@@ -80,6 +80,7 @@ internal class PatchesManager
     {
         foreach (Patch patch in _patches)
         {
+            Console.WriteLine($"Applying patch: {patch.GetType().Name}");
             patch.ApplyPatch();
         }
     }
