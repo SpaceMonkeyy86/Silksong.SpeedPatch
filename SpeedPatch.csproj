@@ -22,9 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <OutputFiles Include="$(TargetDir)/Mono.Cecil.dll" />
-    <OutputFiles Include="$(TargetDir)/MonoMod.Utils.dll" />
-    <OutputFiles Include="$(TargetPath)" LocalDir="/" PackDir="/" />
+    <OutputFiles Include="$(TargetDir)/*.dll" LocalDir="/" PackDir="/" />
     <OutputFiles Include="$(TargetDir)/$(TargetName).pdb" LocalDir="/" PackDir="/" />
 
     <DoorstopUniversal Include="doorstop_config/run_hksr.sh" />
