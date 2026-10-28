@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Mono.Cecil.Rocks;
@@ -36,7 +35,8 @@ internal class CycleNormalizerPatch : Patch
         FieldDefinition timeControlField = new("_timeControl", FieldAttributes.Private, timeControlInstanceType);
         sceneLoadType.Fields.Add(timeControlField);
 
-        ILCursor il = new(new ILContext(targetMethod));
+        using ILContext ilContext = new(targetMethod);
+        ILCursor il = new(ilContext);
 
         il.Goto(0);
         il.GotoNext(i => i.Match(OpCodes.Switch));
@@ -72,7 +72,10 @@ internal class CycleNormalizerPatch : Patch
             .Fields.First(field => field.Name == nameof(SceneAdditiveLoadConditional._additiveSceneLoads));
         additiveSceneLoadsField.IsPublic = true;
         il.EmitLdsfld(additiveSceneLoadsField);
-        il.EmitCall(_targetModule.ImportReference(typeof(List<SceneAdditiveLoadConditional>)
+        // NB: this type CANNOT be List<SceneAdditiveLoadConditional>. If that is used,
+        // Mono attempts to load Assembly-CSharp.dll before running this patch, which breaks everything.
+        // Any List<T> works fine, Mono has no problem finding the correct property at runtime.
+        il.EmitCall(_targetModule.ImportReference(typeof(List<int>)
             .GetProperty(nameof(List<>.Count))!.GetMethod));
         il.EmitSub();
         il.EmitLdcI4(2);

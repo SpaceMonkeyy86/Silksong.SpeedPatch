@@ -2,7 +2,6 @@
 using System.IO;
 using System.Linq;
 using Mono.Cecil;
-using Mono.Cecil.Cil;
 using SilksongDoorstop;
 
 // ReSharper disable once CheckNamespace
